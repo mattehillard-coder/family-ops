@@ -1,6 +1,6 @@
 "use client";
 
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase/browser";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
@@ -8,12 +8,8 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
   async function signInWithGoogle() {
+    const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
