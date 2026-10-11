@@ -10,7 +10,10 @@ export async function updateSession(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll();
+          return request.cookies.getAll().map((c) => ({
+            name: c.name,
+            value: safeDecodeURIComponent(c.value),
+          }));
         },
         setAll(cookiesToSet) {
           for (const { name, value } of cookiesToSet) {
@@ -62,4 +65,12 @@ export async function updateSession(request: NextRequest) {
   }
 
   return supabaseResponse;
+}
+
+function safeDecodeURIComponent(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }

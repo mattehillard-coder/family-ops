@@ -1,15 +1,14 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/browser";
-import { useRouter } from "next/navigation";
-
 export default function SignOutButton() {
-  const router = useRouter();
-
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
+  function handleSignOut() {
+    document.cookie.split(";").forEach((c) => {
+      const name = c.trim().split("=")[0];
+      if (name.startsWith("sb-")) {
+        document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      }
+    });
+    window.location.href = "/login";
   }
 
   return (
