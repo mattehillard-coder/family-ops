@@ -8,7 +8,6 @@ const CHUNK_SIZE = 3180;
 function setSessionCookies(ref: string, sessionJson: string) {
   const key = `sb-${ref}-auth-token`;
 
-  // Clear any old chunks
   document.cookie.split(";").forEach((c) => {
     const name = c.trim().split("=")[0];
     if (name === key || name.startsWith(`${key}.`)) {
@@ -31,53 +30,35 @@ function CallbackHandler() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function handleCallback() {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-      const ref = url.replace("https://", "").split(".")[0];
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const ref = url.replace("https://", "").split(".")[0];
 
-      if (!code) {
-        setError("No authorization code received");
-        return;
+    const supabase = createClient(url, key, {
+      auth: { detectSessionInUrl: true },
+    });
+
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        setStatus("Setting session...");
+        const sessionJson = JSON.stringify(session);
+        setSessionCookies(ref, sessionJson);
+        setStatus("Success! Redirecting...");
+        window.location.href = "/";
       }
+    });
 
-      setStatus("Exchanging code...");
+    const timeout = setTimeout(() => {
+      setError("Sign-in timed out. Please try again.");
+    }, 10000);
 
-      const supabase = createClient(url, key, {
-        auth: { detectSessionInUrl: false },
-      });
-
-      const { data, error: exchangeError } =
-        await supabase.auth.exchangeCodeForSession(code);
-
-      if (exchangeError) {
-        setError(exchangeError.message);
-        return;
-      }
-
-      if (!data.session) {
-        setError("No session returned");
-        return;
-      }
-
-      setStatus("Setting session...");
-
-      const sessionJson = JSON.stringify(data.session);
-      setSessionCookies(ref, sessionJson);
-
-      setStatus("Success! Redirecting...");
-      window.location.href = "/";
-    }
-
-    handleCallback();
+    return () => clearTimeout(timeout);
   }, []);
 
   if (error) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-3 px-4">
-        <p className="text-sm text-red-600">Auth error: {error}</p>
+        <p className="text-sm text-red-600">{error}</p>
         <a href="/login" className="text-sm text-blue-600 underline">
           Back to login
         </a>
