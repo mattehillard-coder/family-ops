@@ -1,47 +1,26 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
 import { Suspense, useEffect, useState } from "react";
 
 function CallbackHandler() {
-  const [status, setStatus] = useState("Signing in...");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function handleCallback() {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
 
-      const supabase = createClient(url, key, {
-        auth: { detectSessionInUrl: true, flowType: "implicit" },
-      });
-
-      const hash = window.location.hash;
-      if (!hash || !hash.includes("access_token")) {
-        setError("No sign-in data received. Please try again.");
-        return;
-      }
-
-      setStatus("Processing sign-in...");
-
-      const { data, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError || !data.session) {
-        setError(sessionError?.message ?? "Could not establish session.");
-        return;
-      }
-
-      const { access_token, refresh_token } = data.session;
-
-      const cookieOpts = "path=/; max-age=604800; SameSite=Lax; Secure";
-      document.cookie = `sb-access-token=${access_token}; ${cookieOpts}`;
-      document.cookie = `sb-refresh-token=${refresh_token}; ${cookieOpts}`;
-
-      setStatus("Success! Redirecting...");
-      window.location.href = "/";
+    if (!accessToken || !refreshToken) {
+      setError("No sign-in data received. Please try again.");
+      return;
     }
 
-    handleCallback();
+    const cookieOpts = "path=/; max-age=604800; SameSite=Lax; Secure";
+    document.cookie = `sb-access-token=${accessToken}; ${cookieOpts}`;
+    document.cookie = `sb-refresh-token=${refreshToken}; ${cookieOpts}`;
+
+    window.location.href = "/";
   }, []);
 
   if (error) {
@@ -57,7 +36,7 @@ function CallbackHandler() {
 
   return (
     <div className="flex min-h-dvh items-center justify-center">
-      <p className="text-sm text-gray-500">{status}</p>
+      <p className="text-sm text-gray-500">Signing in...</p>
     </div>
   );
 }
