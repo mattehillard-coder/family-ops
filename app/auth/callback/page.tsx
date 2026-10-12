@@ -3,56 +3,45 @@
 import { createClient } from "@supabase/supabase-js";
 import { Suspense, useEffect, useState } from "react";
 
-const CHUNK_SIZE = 3180;
-
-function setSessionCookies(ref: string, sessionJson: string) {
-  const key = `sb-${ref}-auth-token`;
-
-  document.cookie.split(";").forEach((c) => {
-    const name = c.trim().split("=")[0];
-    if (name === key || name.startsWith(`${key}.`)) {
-      document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-    }
-  });
-
-  if (sessionJson.length <= CHUNK_SIZE) {
-    document.cookie = `${key}=${encodeURIComponent(sessionJson)}; path=/; max-age=31536000; SameSite=Lax; Secure`;
-  } else {
-    for (let i = 0; i * CHUNK_SIZE < sessionJson.length; i++) {
-      const chunk = sessionJson.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      document.cookie = `${key}.${i}=${encodeURIComponent(chunk)}; path=/; max-age=31536000; SameSite=Lax; Secure`;
-    }
-  }
-}
-
 function CallbackHandler() {
   const [status, setStatus] = useState("Signing in...");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const ref = url.replace("https://", "").split(".")[0];
+    async function handleCallback() {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-    const supabase = createClient(url, key, {
-      auth: { detectSessionInUrl: true },
-    });
+      const supabase = createClient(url, key, {
+        auth: { detectSessionInUrl: true, flowType: "implicit" },
+      });
 
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        setStatus("Setting session...");
-        const sessionJson = JSON.stringify(session);
-        setSessionCookies(ref, sessionJson);
-        setStatus("Success! Redirecting...");
-        window.location.href = "/";
+      const hash = window.location.hash;
+      if (!hash || !hash.includes("access_token")) {
+        setError("No sign-in data received. Please try again.");
+        return;
       }
-    });
 
-    const timeout = setTimeout(() => {
-      setError("Sign-in timed out. Please try again.");
-    }, 10000);
+      setStatus("Processing sign-in...");
 
-    return () => clearTimeout(timeout);
+      const { data, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !data.session) {
+        setError(sessionError?.message ?? "Could not establish session.");
+        return;
+      }
+
+      const { access_token, refresh_token } = data.session;
+
+      const cookieOpts = "path=/; max-age=604800; SameSite=Lax; Secure";
+      document.cookie = `sb-access-token=${access_token}; ${cookieOpts}`;
+      document.cookie = `sb-refresh-token=${refresh_token}; ${cookieOpts}`;
+
+      setStatus("Success! Redirecting...");
+      window.location.href = "/";
+    }
+
+    handleCallback();
   }, []);
 
   if (error) {
