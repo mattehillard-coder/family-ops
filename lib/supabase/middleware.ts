@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+function sanitize(v: string): string {
+  return v.replace(/[^\x00-\xff]/g, "");
+}
+
 export async function updateSession(request: NextRequest) {
   const isLoginPage = request.nextUrl.pathname === "/login";
   const isAuthRoute = request.nextUrl.pathname.startsWith("/auth/");
@@ -111,7 +115,7 @@ async function refreshAccessToken(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          apikey: sanitize(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!),
         },
         body: JSON.stringify({ refresh_token: refreshToken }),
       }
