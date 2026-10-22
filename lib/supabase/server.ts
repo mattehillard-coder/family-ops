@@ -8,9 +8,9 @@ function sanitize(v: string): string {
 const safeFetch: typeof fetch = (input, init) => {
   if (init?.headers) {
     const h = new Headers(init.headers as HeadersInit);
-    const clean = new Headers();
-    h.forEach((v, k) => clean.set(k, sanitize(v)));
-    init = { ...init, headers: clean };
+    const auth = h.get("authorization");
+    if (auth) h.set("authorization", sanitize(auth));
+    init = { ...init, headers: h };
   }
   return fetch(input, init);
 };
@@ -22,7 +22,7 @@ export async function createClient() {
 
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    sanitize(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!),
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       global: {
         fetch: safeFetch,
