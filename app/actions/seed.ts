@@ -27,6 +27,18 @@ interface ObligationSeed {
   entityNames: string[];
 }
 
+export async function clearHousehold() {
+  const supabase = await createClient();
+  // Delete in order respecting foreign keys
+  await supabase.from("completion").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabase.from("occurrence").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabase.from("obligation_entity").delete().neq("obligation_id", "00000000-0000-0000-0000-000000000000");
+  await supabase.from("obligation").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabase.from("entity").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  revalidatePath("/today");
+  revalidatePath("/cards");
+}
+
 export async function seedHousehold() {
   const supabase = await createClient();
 
@@ -37,6 +49,15 @@ export async function seedHousehold() {
   if (count && count > 0) {
     return { error: "Household already seeded. Delete existing data first to re-seed." };
   }
+
+  try {
+    return await doSeed(supabase);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Unknown seed error" };
+  }
+}
+
+async function doSeed(supabase: Awaited<ReturnType<typeof createClient>>) {
 
   // --- ENTITIES (flat list, children tracked by parentName) ---
 
