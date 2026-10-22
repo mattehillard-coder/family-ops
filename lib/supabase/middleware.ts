@@ -2,9 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
   const isLoginPage = request.nextUrl.pathname === "/login";
-  const isAuthCallback = request.nextUrl.pathname.startsWith("/auth/callback");
+  const isAuthRoute = request.nextUrl.pathname.startsWith("/auth/");
 
-  if (isAuthCallback) {
+  if (isAuthRoute) {
     return NextResponse.next();
   }
 
