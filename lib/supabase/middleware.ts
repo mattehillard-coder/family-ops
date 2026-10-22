@@ -8,8 +8,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const accessToken = request.cookies.get("sb-access-token")?.value;
-  const refreshToken = request.cookies.get("sb-refresh-token")?.value;
+  const rawAccess = request.cookies.get("sb-access-token")?.value;
+  const rawRefresh = request.cookies.get("sb-refresh-token")?.value;
+  // Strip non-ASCII chars that @supabase/ssr may have injected
+  const accessToken = rawAccess?.replace(/[^\x00-\xff]/g, "") || undefined;
+  const refreshToken = rawRefresh?.replace(/[^\x00-\xff]/g, "") || undefined;
 
   if (!accessToken) {
     if (isLoginPage) return NextResponse.next();
