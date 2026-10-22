@@ -20,7 +20,7 @@ function CallbackHandler() {
     document.cookie = `sb-access-token=${accessToken}; ${cookieOpts}`;
     document.cookie = `sb-refresh-token=${refreshToken}; ${cookieOpts}`;
 
-    window.location.href = "/";
+    window.location.href = "/today";
   }, []);
 
   if (error) {
