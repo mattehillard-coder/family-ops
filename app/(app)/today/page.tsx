@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getOccurrenceState, todayLA } from "@/lib/recurrence/engine";
 import { OccurrenceRow } from "./occurrence-row";
 import SignOutButton from "@/app/sign-out-button";
+import Link from "next/link";
 
 interface OccurrenceWithObligation {
   id: string;
@@ -79,6 +80,22 @@ export default async function TodayPage() {
     return days > 0 && days <= 90;
   });
 
+  // Check if onboarding is needed (interval obligations with no occurrences)
+  const { count: intervalWithNoOcc } = await supabase
+    .from("obligation")
+    .select("id", { count: "exact", head: true })
+    .eq("recurrence_type", "interval")
+    .eq("status", "active");
+
+  const { count: intervalOccCount } = await supabase
+    .from("occurrence")
+    .select("id", { count: "exact", head: true })
+    .in("state", ["upcoming", "due", "overdue", "snoozed", "done"]);
+
+  const hasEntities = (await supabase.from("entity").select("id", { count: "exact", head: true })).count;
+  const needsOnboarding =
+    hasEntities && hasEntities > 0 && intervalWithNoOcc && intervalWithNoOcc > 0;
+
   const isEmpty =
     overdue.length === 0 &&
     thisWeek.length === 0 &&
@@ -91,6 +108,21 @@ export default async function TodayPage() {
         <h1 className="text-xl font-bold">Today</h1>
         <SignOutButton />
       </div>
+
+      {needsOnboarding && (
+        <Link
+          href="/onboarding"
+          className="mt-4 flex items-center justify-between rounded-lg bg-blue-50 px-4 py-3 active:bg-blue-100"
+        >
+          <div>
+            <p className="text-sm font-medium text-blue-900">Finish setup</p>
+            <p className="text-xs text-blue-600">Enter last-done dates for interval items</p>
+          </div>
+          <svg className="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+          </svg>
+        </Link>
+      )}
 
       {isEmpty && (
         <div className="mt-16 text-center">
